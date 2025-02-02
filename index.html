@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Interactif</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: url('file:///C:/Users/theba/Downloads/photo-1444080748397-f442aa95c3e5%20(1).jpg') no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            padding: 0;
+            color: white;
+        }
+        .quiz-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            color: #FFD700;
+        }
+        #question {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .answer-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 5px;
+            background-color: #007BFF;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.5s ease-in;
+        }
+        .answer-btn:hover {
+            background-color: #0056b3;
+        }
+        #next-btn, #results-btn, #restart-btn {
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 16px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #next-btn.hidden, #results-btn.hidden, #restart-btn.hidden {
+            display: none;
+        }
+        .feedback {
+            font-size: 18px;
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #FFD700;
+            display: none;
+        }
+
+        .feedback.correct {
+            color: green;
+        }
+
+        .feedback.incorrect {
+            color: red;
+        }
+
+        .result-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: none;
+        }
+        .result-text {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        input {
+            padding: 10px;
+            font-size: 16px;
+            width: 100%;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <h1>Quiz</h1>
+        <p id="question"></p>
+        <div id="answers"></div>
+        <div id="feedback" class="feedback"></div>
+        <button id="next-btn" class="hidden" onclick="nextQuestion()">Suivant</button>
+        <button id="results-btn" class="hidden" onclick="showResults()">Voir les résultats</button>
+        <button id="restart-btn" class="hidden" onclick="restartQuiz()">Recommencer</button>
+    </div>
+    <div class="result-container" id="result-container">
+        <p class="result-text" id="result-text"></p>
+    </div>
+    
+    <!-- Liens vers les sons -->
+    <audio id="correct-sound" src="https://www.myinstants.com/media/sounds/undertakers-bell_2UwFCIe.mp3"></audio>
+    <audio id="wrong-sound" src="https://www.myinstants.com/media/sounds/tuco-get-out.mp3"></audio>
+    <audio id="fail-sound" src="https://www.myinstants.com/media/sounds/sad-meow-song.mp3"></audio>
+    <audio id="vine-boom-sound" src="https://www.myinstants.com/media/sounds/vine-boom-sound-effect_KT89XIq.mp3"></audio>
+    
+    <script>
+        const quiz = [
+            { question: "Quelle est la capitale de la France ?", answers: ["Paris", "pas riz", "parys"], correct: 0 },
+            { question: "Combien font 2 + 2 ?", answers: ["0", "22", "4"], correct: 1 },
+            { question: "Quelle est la couleur du ciel par beau temps ?", answers: ["Bleu ciel", "Vert", "Rouge"], correct: 0 },
+            { question: "Qui a écrit 'Les Misérables' ?", answers: ["Victor Hugo", "Hugo Décrypte", "Hugo Qui Crypte"], correct: 0 },
+            { question: "Quelle planète est la plus proche du Soleil ?", answers: ["Mars", "Namek", "Vénus"], correct: 1 },
+            { question: "Admettons que 2+3=jambon. Où se situe la nébuleuse d'Orion ?", answers: ["1351 années-lumière de la Terre", "Dans le ciel", "Réponse 1"], correct: 2 },
+            { question: "Quel est l'animal terrestre le plus rapide ?", answers: ["Pain perdu", "Antilope", "Lion"], correct: 0 },
+            { question: "Dans quel continent se trouve Florant Patrimoine ?", answers: ["Afrique", "Asie", "Europe"], correct: 1 },
+            { question: "Si un pain est retrouvé alors il est ? ?", answers: ["Atlantique", "Pacifique", "Indien"], correct: 1 },
+            { question: "Combien de côtés a un cercle ?", answers: ["5", "pantalon", "8"], correct: 1 },
+            { question: "Comment s'appelle un pain perdu que l'on a retrouvé (en minuscule) ?", answers: [], correct: "pain perdu retrouvé" },
+            { question: "Quel est le nom de la capitale du Japon ?", answers: [], correct: "42" }
+        ];
+
+        let score = 0;
+        let currentQuestionIndex = 0;
+        let answered = false;
+
+        // Mélange des questions de manière aléatoire
+        function shuffleQuiz(quiz) {
+            for (let i = quiz.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [quiz[i], quiz[j]] = [quiz[j], quiz[i]]; // Échange les éléments
+            }
+        }
+
+        // Mélanger les questions avant de commencer
+        shuffleQuiz(quiz);
+
+        function loadQuestion() {
+            answered = false;
+            const questionElement = document.getElementById("question");
+            const answersElement = document.getElementById("answers");
+            const feedbackElement = document.getElementById("feedback");
+
+            feedbackElement.style.display = "none";
+            questionElement.textContent = quiz[currentQuestionIndex].question;
+            answersElement.innerHTML = "";
+
+            if (quiz[currentQuestionIndex].answers.length > 0) {
+                quiz[currentQuestionIndex].answers.forEach((answer, index) => {
+                    const button = document.createElement("button");
+                    button.textContent = answer;
+                    button.classList.add("answer-btn");
+                    button.onclick = () => checkAnswer(index);
+                    answersElement.appendChild(button);
+                    button.style.opacity = "1"; // Make sure answers appear instantly
+                });
+            } else {
+                // Question where the answer is typed in
+                const input = document.createElement("input");
+                input.type = "text";
+                input.id = "text-answer";
+                input.placeholder = "Entrez votre réponse ici";
+                answersElement.appendChild(input);
+                const checkButton = document.createElement("button");
+                checkButton.textContent = "Vérifier";
+                checkButton.onclick = () => checkTextAnswer(input.value);
+                answersElement.appendChild(checkButton);
+            }
+
+            document.getElementById("next-btn").classList.add("hidden");
+        }
+
+        function checkAnswer(selectedIndex) {
+            if (answered) return;
+            answered = true;
+            const feedbackElement = document.getElementById("feedback");
+
+            if (selectedIndex === quiz[currentQuestionIndex].correct) {
+                feedbackElement.textContent = "Bonne réponse !";
+                feedbackElement.classList.add("correct");
+                feedbackElement.classList.remove("incorrect");
+                score++;
+                document.getElementById("correct-sound").play(); // Son correct
+            } else {
+                feedbackElement.textContent = "Mauvaise réponse.";
+                feedbackElement.classList.add("incorrect");
+                feedbackElement.classList.remove("correct");
+                document.getElementById("wrong-sound").play(); // Son incorrect
+            }
+
+            feedbackElement.style.display = "block";
+            setTimeout(() => {
+                document.getElementById("next-btn").classList.remove("hidden");
+            }, 2000);  // 2 secondes avant d'afficher le bouton
+        }
+
+        function checkTextAnswer(userAnswer) {
+            if (answered) return;
+            answered = true;
+            const feedbackElement = document.getElementById("feedback");
+            const correctAnswer = quiz[currentQuestionIndex].correct.toLowerCase();
+
+            if (userAnswer.toLowerCase() === correctAnswer) {
+                feedbackElement.textContent = "Bonne réponse !";
+                feedbackElement.classList.add("correct");
+                feedbackElement.classList.remove("incorrect");
+                score++;
+                document.getElementById("correct-sound").play(); // Son correct
+            } else {
+                feedbackElement.textContent = `Mauvaise réponse. La bonne réponse était : ${quiz[currentQuestionIndex].correct}`;
+                feedbackElement.classList.add("incorrect");
+                feedbackElement.classList.remove("correct");
+                document.getElementById("wrong-sound").play(); // Son incorrect
+            }
+
+            feedbackElement.style.display = "block";
+            setTimeout(() => {
+                document.getElementById("next-btn").classList.remove("hidden");
+            }, 2000);  // 2 secondes avant d'afficher le bouton
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < quiz.length) {
+                loadQuestion();
+            } else {
+                document.getElementById("next-btn").classList.add("hidden");
+                document.getElementById("results-btn").classList.remove("hidden");
+            }
+        }
+
+        function showResults() {
+            const resultText = document.getElementById("result-text");
+
+            // Si le score est supérieur à la moitié du total des questions, jouer le son Vine Boom
+            if (score > quiz.length / 2) {
+                resultText.textContent = `Félicitations ! Vous n'avez pas de vie et avez obtenu la certification Pyks avec un score de ${score} sur ${quiz.length}.`;
+                document.getElementById("vine-boom-sound").play(); // Son Vine Boom
+            } else {
+                resultText.textContent = `Désolé, vous n'avez pas obtenu la certification Pyks. Votre score est ${score} sur ${quiz.length}.`;
+                document.getElementById("fail-sound").play(); // Son échec
+                document.getElementById("restart-btn").classList.remove("hidden"); // Afficher le bouton de recommencement
+            }
+
+            document.getElementById("result-container").style.display = "block";
+            document.getElementById("results-btn").classList.add("hidden");
+        }
+
+        function restartQuiz() {
+            score = 0; // Réinitialiser le score
+            currentQuestionIndex = 0; // Réinitialiser l'indice de la question
+            shuffleQuiz(quiz); // Mélanger les questions
+            loadQuestion(); // Recharger la première question
+            document.getElementById("restart-btn").classList.add("hidden"); // Masquer le bouton de recommencement
+            document.getElementById("result-container").style.display = "none"; // Masquer les résultats
+        }
+
+        loadQuestion(); // Lancer le quiz en chargeant la première question
+    </script>
+</body>
+</html>
